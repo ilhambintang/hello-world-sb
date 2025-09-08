@@ -1,0 +1,46 @@
+name: Fortify DAST Scan
+
+on:
+  push:
+    branches: [ main ]
+
+
+jobs:
+  fortify-dast:
+    runs-on: ubuntu-latest
+    container:
+      image: fortifydocker/fortify-ci-tools:5.4.1-jdk-17
+    env:
+      SC_DAST_SCAN_NAME: ${{secrets.SC_DAST_SCAN_NAME }}
+      FCLI_DEFAULT_SSC_USER: ${{secrets.FCLI_DEFAULT_SSC_USER }}
+      FCLI_DEFAULT_SSC_PASSWORD: ${{secrets.FCLI_DEFAULT_SSC_PASSWORD }}
+      FCLI_DEFAULT_SSC_URL: ${{secrets.FCLI_DEFAULT_SSC_URL }}
+      SC_DAST_CICD_IDENTIFIER: ${{secrets.SC_DAST_CICD_IDENTIFIER }}
+      # Uncomment if you want to use app version ID
+      # SSC_APP_VERSION_ID: ${{ secrets.SSC_APP_VERSION_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to SSC
+        run: fcli ssc session login --insecure
+
+      - name: Login to ScanCentral DAST
+        run: fcli sc-dast session login --insecure
+
+      - name: Start DAST Scan
+        run: fcli sc-dast scan start --name="$SC_DAST_SCAN_NAME" --settings="$SC_DAST_CICD_IDENTIFIER"
+
+      - name: Logout from ScanCentral DAST
+        run: fcli sc-dast session logout
+
+      - name: Logout from SSC
+        run: fcli ssc session logout
+
+      - name: Upload DAST Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: fortify-dast-report
+          path: gl-fortify-dast.json
+          retention-days: 3
